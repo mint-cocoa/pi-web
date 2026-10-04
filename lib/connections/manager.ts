@@ -59,6 +59,13 @@ function find(id: string): Live {
   if (!value) throw new Error("Remote connection was not found.");
   return value;
 }
+export async function registeredConnection(id: string): Promise<Saved> {
+  return serialized(async () => {
+    const { connection } = find(id);
+    if (!(await sshAliases()).includes(connection.alias)) throw new Error("SSH alias is no longer configured.");
+    return { id: connection.id, alias: connection.alias, label: connection.label };
+  });
+}
 export async function listConnections() {
   return serialized(async () => ({ connections: [...registry().records.values()].map(value => ({ ...value.connection })), aliases: await sshAliases(), configPath: configPath() }));
 }

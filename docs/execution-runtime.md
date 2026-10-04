@@ -1,0 +1,19 @@
+# Execution workspace
+
+The previous display host has been replaced by a common execution controller. Dot's floating panel and the remote connection manager remain. The sidebar groups sessions under each computer, initially shows five rows and supports collapse and more rows. Clicking a session infers its connection and engine from SessionRef; a connection dropdown is unnecessary. Each computer's + opens a creation form bound to that computer. When both engines are installed, only the new-session form offers an engine choice.
+
+The execution path is `RuntimeChatWindow → useSessionController → SessionController → /api/runtime → executionProvider → runtime manager → SDK or GatewayClient → Pi/Codex`. React components do not run SSH or interpret native RPC methods. `SessionRef` always includes connectionId, backend and the native session id. Providers reject references for another computer or engine.
+
+Local Pi reuses Pi Web's existing SDK wrapper. An SSH alias resolving to the same kernel boot id, hostname and Unix user reuses that wrapper too. Remote Pi uses its long-lived RPC CLI; Codex attaches to the host's existing daemon control socket when available and otherwise runs an app-server. This avoids creating a second Codex executor when the native daemon is running. The browser's “local” means the Pi Web server, which is Oracle in this deployment, not the browser PC.
+
+SSH uses saved aliases, BatchMode, strict host-key checks and no shared ControlPath. A fixed Python helper is installed under the target user's `~/.local/share/pi-web-runtime/`; it has an owner-only socket and state directory. No login tokens or SSH keys are copied. A disconnected SSH client or closed SSE subscription does not stop the remote helper or its task. Local SDK tasks survive a browser disconnect while the Pi Web process remains alive; restarting that process can interrupt a local task.
+
+Create operations use a stable request id and fingerprint. Remote creation receipts survive gateway restart. Local receipt deduplication lasts for the current Pi Web process. Ambiguous send timeouts are reported; messages are never automatically resent. Concurrent sends are serialized, and active sessions reject another send. The UI restores an unsuccessful submission to its composer and keeps each tab's target and session reference across refresh.
+
+Codex replies distinguish command/file approval, turn-scoped permission grants and question answers. Pi confirmation, input, editor and selection replies keep their native semantics. Unknown request types cannot receive a generic accept response. Interrupt targets the current native turn/session. Native item, turn and delta events become the same message and tool-result view used by Pi.
+
+Codex app-server 0.157.1 on cocoamini supports existing materialized transcripts but cannot list turns for a fresh paginated thread. New threads explicitly use the experimental `legacy` history mode. Before the first message, the documented “not materialized yet” response is handled by reading metadata without turns. The existing daemon is not restarted or upgraded.
+
+The first version exposes text messages, tool results, approvals, questions and interrupt. Pi-specific tree navigation, attachments and remote file/terminal panels are not yet part of the common controller. Session lists show up to 100 Codex records and chat rendering keeps the most recent 400 messages. Pi must already be installed on a target; cocoamini currently offers Codex.
+
+Verification includes the existing Node suite, provider/controller/normalizer tests and Python gateway tests for persistent create receipts, bounded event batches, cross-thread approval rejection, running-turn admission and WebSocket fragmentation/ping. Live checks use isolated workspaces and new verification sessions; they do not send prompts to existing user chats.

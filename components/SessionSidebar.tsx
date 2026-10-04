@@ -6,10 +6,7 @@ import { listSessionFamilies } from "@/lib/session-family";
 import { loadExplorerOpen, saveExplorerOpen } from "@/lib/file-explorer-state";
 import { dispatchSessionRowContextMenu } from "@/lib/session-row-context-menu";
 import { skillExpansionToCommand } from "@/lib/slash-display";
-import { getProjectActivity, getRecentProjects } from "@/lib/project-groups";
-import { ConnectionSidebar } from "./connections/ConnectionSidebar";
-import type { SessionSelection } from "@/lib/session-provider";
-import { sessionRefKey } from "@/lib/session-provider";
+import { getProjectActivity, getRecentProjects, sessionsForProject } from "@/lib/project-groups";
 import { workspaceKeyOf } from "@/lib/workspace-memory";
 import { formatRelativeTime } from "@/lib/i18n/format";
 import { useI18n } from "@/hooks/useI18n";
@@ -122,6 +119,7 @@ function sessionListUrl(summary: boolean, force: boolean): string {
 }
 
 interface Props {
+  executionContent?: React.ReactNode;
   selectedSessionId: string | null;
   onSelectSession: (session: SessionInfo, isRestore?: boolean, entryId?: string, blockIndex?: number) => void;
   onNewSession?: (sessionId: string, cwd: string) => void;
@@ -147,9 +145,6 @@ interface Props {
   onBackgroundTaskDone?: () => void;
   onRunningSessionIdsChange?: (ids: Set<string>) => void;
   onSessionsChange?: (sessions: SessionInfo[]) => void;
-  selectedProviderSession?: SessionSelection | null;
-  onSelectProviderSession: (selection: SessionSelection) => void;
-  onManageConnections: () => void;
 }
 
 interface WorktreeEntry {
@@ -401,7 +396,11 @@ function PiWebTitle() {
   );
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, onOpenTerminal, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onBackgroundTaskDone, onRunningSessionIdsChange, onSessionsChange, selectedProviderSession, onSelectProviderSession, onManageConnections }: Props) {
+export function SessionSidebar(props: Props) {
+  return props.executionContent ? <>{props.executionContent}</> : <LegacySessionSidebar {...props} />;
+}
+
+function LegacySessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, onOpenTerminal, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onBackgroundTaskDone, onRunningSessionIdsChange, onSessionsChange }: Props) {
   const { t } = useI18n();
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   // Tracked in a ref only: the version is compared against the polled value to
@@ -438,6 +437,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [fileSearchOpen, setFileSearchOpen] = useState(false);
   const [sessionSearchOpen, setSessionSearchOpen] = useState(false);
   const [sessionSearchQuery, setSessionSearchQuery] = useState("");
+  const sessionSearchActive = sessionSearchOpen && Boolean(sessionSearchQuery.trim());
   const [changesCount, setChangesCount] = useState(0);
   const [changesCollapsed, setChangesCollapsed] = useState(true);
   const [explorerRefreshDone, setExplorerRefreshDone] = useState(false);
@@ -493,6 +493,36 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     storageKey: "pi-web:sidebar-session-pane-height",
     widthRef: sessionPaneHeightRef,
   });
+  const [listViewportH, setListViewportH] = useState(0);
+  const [listScrollTop, setListScrollTop] = useState(0);
+  const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
+  const listScrollRafRef = useRef<number | null>(null);
+  const listScrollTopRef = useRef(0);
+  const renderedListScrollTopRef = useRef(0);
+  const handleListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    listScrollTopRef.current = e.currentTarget.scrollTop;
+    if (listScrollRafRef.current != null) return;
+    listScrollRafRef.current = requestAnimationFrame(() => {
+      listScrollRafRef.current = null;
+      const nextTop = Math.floor(listScrollTopRef.current / SESSION_LIST_ITEM_HEIGHT) * SESSION_LIST_ITEM_HEIGHT;
+      if (renderedListScrollTopRef.current === nextTop) return;
+      renderedListScrollTopRef.current = nextTop;
+      setListScrollTop(nextTop);
+    });
+  }, []);
+  useLayoutEffect(() => {
+    const el = listScrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) setListViewportH(entry.contentRect.height);
+    });
+    ro.observe(el);
+    setListViewportH(el.clientHeight);
+    listScrollTopRef.current = el.scrollTop;
+    renderedListScrollTopRef.current = Math.floor(el.scrollTop / SESSION_LIST_ITEM_HEIGHT) * SESSION_LIST_ITEM_HEIGHT;
+    setListScrollTop(renderedListScrollTopRef.current);
+    return () => ro.disconnect();
+  }, [sessionSearchActive]);
 
   const loadSessions = useCallback(async (showLoading = false, force = false, summary = false) => {
     const loadId = ++sessionLoadIdRef.current;
@@ -1093,6 +1123,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     [projectActivity, selectedProject],
   );
 
+  const filteredSessions = useMemo(
+    () => selectedProject ? sessionsForProject(allSessions, selectedProject.key) : allSessions,
+    [allSessions, selectedProject],
+  );
   const showWorktreeSwitcher = Boolean(
     worktreeState?.isGit
     && worktreeState.isTopLevel
@@ -1122,15 +1156,14 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         }
       : null);
 
-  const sessionFamilies = useMemo(() => listSessionFamilies(allSessions), [allSessions]);
-  const navigationLocalSessions = useMemo(() => sessionFamilies.map(family => ({
-    connectionId: "local", backend: "pi" as const, id: family.root.id,
-    title: family.root.name || (skillExpansionToCommand(family.root.firstMessage) || family.root.firstMessage).slice(0, 50) || family.root.id.slice(0, 12),
-    cwd: family.root.cwd, updatedAt: family.latestModified, transient: family.root.transient,
-    selected: !selectedProviderSession && [family.root, ...family.subagents].some(session => session.id === selectedSessionId),
-    running: [family.root, ...family.subagents].some(session => runningSessionIds.has(session.id)),
-    unread: [family.root, ...family.subagents].some(session => unreadSessionIds.has(session.id)),
-  })), [sessionFamilies, selectedProviderSession, selectedSessionId, runningSessionIds, unreadSessionIds]);
+  const sessionFamilies = useMemo(() => listSessionFamilies(filteredSessions), [filteredSessions]);
+
+  const virtualIndices = useMemo(() => getSessionListIndices(
+    sessionFamilies.length,
+    listScrollTop,
+    listViewportH,
+    sessionFamilies.findIndex((family) => family.root.id === focusedSessionId),
+  ), [focusedSessionId, listScrollTop, listViewportH, sessionFamilies]);
 
   return (
     <div
@@ -1224,7 +1257,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         </div>
 
         {/* CWD picker */}
-        <details className="connection-nav-workspace"><summary>로컬 작업 폴더</summary>
         <div ref={dropdownRef} style={{ position: "relative" }}>
           <button
             onClick={() => setDropdownOpen((v) => !v)}
@@ -1429,7 +1461,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           </AnimatedDropdown>
         </div>
 
-        </details>
         {sessionSearchOpen && (
           <input
             id="session-search-input"
@@ -1816,8 +1847,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           overflow: "hidden",
         }}
       >
+        <SessionSearch open={sessionSearchOpen} query={sessionSearchQuery} selectedSessionId={selectedSessionId} onSelectSession={handleSelectSessionFromList}>
         <div
           ref={listScrollRef}
+          onScroll={handleListScroll}
           className="scrollbar-subtle"
           style={{
             flex: "1 1 auto",
@@ -1836,24 +1869,51 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             {error}
           </div>
         )}
-        <ConnectionSidebar localSessions={navigationLocalSessions} selectedSession={selectedProviderSession}
-          query={sessionSearchOpen ? sessionSearchQuery : ""} onSelectSession={selection => {
-            const nativeReference = navigationLocalSessions.find(item => sessionRefKey(item) === sessionRefKey(selection.ref));
-            const native = nativeReference ? allSessions.find(session => session.id === nativeReference.id) : undefined;
-            if (native && selection.provider.capabilities.send && selection.provider.capabilities.live) handleSelectSessionFromList(native);
-            else onSelectProviderSession(selection);
-          }} onManageConnections={onManageConnections}
-          renderLocalGroup={children => <SessionSearch open={sessionSearchOpen} query={sessionSearchQuery} selectedSessionId={selectedSessionId} onSelectSession={handleSelectSessionFromList}>{children}</SessionSearch>}
-          viewAdapters={[{ id: "native-pi-row", target: { connectionId: "local", backend: "pi" }, row: ({ session: item, actions, activate }) => {
-            if (!navigationLocalSessions.some(native => sessionRefKey(native) === sessionRefKey(item))) return null;
-            const family = sessionFamilies.find(value => value.root.id === item.id);
-            if (!family) return null;
-            return <SessionItem session={{ ...family.root, modified: family.latestModified }} compact navigationActions={actions}
-              isSelected={item.selected || false} isRunning={item.running} isUnread={item.unread}
-              onClick={activate} onRenamed={loadSessions}
-              onDeleted={id => { onSessionDeleted?.(id); void loadSessions(); }} />;
-          } }, { id: "standard-session-row" }]} />
+        {!loading && !error && sessionFamilies.length === 0 && (
+          <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
+            {t("sidebar.noSessions")}
+          </div>
+        )}
+        {sessionFamilies.length > 0 && (
+          <div
+            style={{
+              position: "relative",
+              height: sessionFamilies.length * SESSION_LIST_ITEM_HEIGHT,
+            }}
+          >
+            {virtualIndices.map((index) => {
+              const family = sessionFamilies[index];
+              const familySessions = [family.root, ...family.subagents];
+              const displaySession = family.latestModified === family.root.modified
+                ? family.root
+                : { ...family.root, modified: family.latestModified };
+              // Bubble blur after the input's save handler before unpinning the row.
+              return (
+                <div
+                  key={family.root.id}
+                  onFocus={() => setFocusedSessionId(family.root.id)}
+                  onBlur={() => setFocusedSessionId(null)}
+                  style={{ position: "absolute", top: index * SESSION_LIST_ITEM_HEIGHT, left: 0, right: 0 }}
+                >
+                  <SessionItem
+                    session={displaySession}
+                    isSelected={familySessions.some((session) => session.id === selectedSessionId)}
+                    isRunning={familySessions.some((session) => runningSessionIds.has(session.id))}
+                    isUnread={familySessions.some((session) => unreadSessionIds.has(session.id))}
+                    onClick={() => handleSelectSessionFromList(family.root)}
+                    onRenamed={loadSessions}
+                    onDeleted={(id) => {
+                      onSessionDeleted?.(id);
+                      loadSessions();
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
         </div>
+        </SessionSearch>
       </div>
 
       {explorerOpen && (selectedCwdProp || selectedCwd) && (
@@ -2162,8 +2222,6 @@ function SessionItem({
   hasChildren = false,
   collapsed = false,
   onToggleCollapse,
-  compact = false,
-  navigationActions,
 }: {
   session: SessionInfo;
   isSelected: boolean;
@@ -2176,8 +2234,6 @@ function SessionItem({
   hasChildren?: boolean;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
-  compact?: boolean;
-  navigationActions?: ReactNode;
 }) {
   const { locale, t } = useI18n();
   const [hovered, setHovered] = useState(false);
@@ -2282,20 +2338,11 @@ function SessionItem({
       onContextMenu={confirmDelete || renaming ? undefined : handleContextMenu}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); }}
-      tabIndex={0}
-      role="group"
-      aria-label={title}
-      onFocus={() => setHovered(true)}
-      onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHovered(false); }}
-      onKeyDown={event => {
-        if (event.target === event.currentTarget && !renaming && !confirmDelete && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick(); }
-      }}
-      title={compact ? `${session.cwd}\n${title}` : undefined}
       style={{
-        height: compact ? 46 : SESSION_LIST_ITEM_HEIGHT,
+        height: SESSION_LIST_ITEM_HEIGHT,
         display: "flex",
         alignItems: "center",
-        paddingLeft: compact ? 33 : depth > 0 ? depth * 12 + 14 : 14,
+        paddingLeft: depth > 0 ? depth * 12 + 14 : 14,
         paddingRight: 8,
         cursor: confirmDelete || renaming ? "default" : "pointer",
         background: confirmDelete
@@ -2402,11 +2449,8 @@ function SessionItem({
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                 {title}
               </span>
-              {compact && isRunning && <RunningSessionIndicator />}
-              {compact && !isRunning && isUnread && <UnreadSessionIndicator />}
             </div>
-            {compact && <div style={{ color: "var(--text-dim)", fontSize: 10, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{session.cwd}</div>}
-            <div style={{ marginTop: 2, display: compact ? "none" : "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 11, minWidth: 0 }}>
+            <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 11, minWidth: 0 }}>
               {isRunning ? (
                 <RunningSessionIndicator />
               ) : isUnread ? (
@@ -2457,7 +2501,6 @@ function SessionItem({
           {/* Action buttons — shown on hover */}
           {hovered && !session.transient && (
             <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-              {navigationActions}
               <button
                 onClick={startRename}
                 title={t("sidebar.rename")}

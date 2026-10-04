@@ -4,12 +4,15 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } fr
 import { useRouter, useSearchParams } from "next/navigation";
 import { DotFloatingPanel } from "./dot/DotFloatingPanel";
 import { RemoteConnections } from "./connections/RemoteConnections";
-import { SessionViewHost } from "./session-views/SessionViewHost";
-import type { SessionSelection } from "@/lib/session-provider";
-import "./connections/connection-navigation.css";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
 import { ChatWindow } from "./ChatWindow";
+import { ExecutionSidebar } from "./runtime/ExecutionSidebar";
+import { RuntimeChatWindow } from "./runtime/RuntimeChatWindow";
+import { NewRuntimeSession } from "./runtime/NewRuntimeSession";
+import { useExecutionWorkspace } from "@/hooks/useExecutionWorkspace";
+import { useExecutionGroups, type ExecutionGroup } from "@/hooks/useExecutionGroups";
+import { sessionRefKey } from "@/lib/session-provider";
 import type { ChatScrollPosition } from "@/lib/chat-scroll-position";
 import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
@@ -87,7 +90,16 @@ export function AppShell() {
   const searchParams = useSearchParams();
   const [dotOpen, setDotOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
-  const [selectedProviderSession, setSelectedProviderSession] = useState<SessionSelection | null>(null);
+  const execution = useExecutionWorkspace();
+  const executionGroups = useExecutionGroups();
+  const newExecutionGroup = executionGroups.find(group => group.id === execution.target.connectionId);
+  const [newRuntimeOpen, setNewRuntimeOpen] = useState(false);
+  const openRuntimeNew = (group?: ExecutionGroup) => {
+    const selected = group || newExecutionGroup || executionGroups[0];
+    if (!selected?.backends.length) return;
+    execution.setTarget({ connectionId: selected.id, backend: selected.backends.includes(execution.target.backend) ? execution.target.backend : selected.backends[0] });
+    setNewRuntimeOpen(true);
+  };
   const [initialNavigation, setInitialNavigation] = useState(() => getInitialNavigation(searchParams));
   // Keep the system-theme subscription mounted for the lifetime of the app.
   useTheme();
@@ -747,7 +759,6 @@ export function AppShell() {
   }, [activeCwd, activeFileTabId, invalidateWorkspaceRestore, newSessionCwd, router, selectedSession, restoreWorkspaceContext]);
 
   const handleSelectSession = useCallback((session: SessionInfo, isRestore = false, entryId?: string, blockIndex?: number) => {
-    setSelectedProviderSession(null);
     setSearchTarget(entryId ? { sessionId: session.id, entryId, blockIndex } : null);
     invalidateWorkspaceRestore();
     const activeDraftKey = activeNewSessionDraftKeyRef.current;
@@ -807,7 +818,6 @@ export function AppShell() {
   }, [activeCwd, activeFileTabId, invalidateWorkspaceRestore, router, isMobile, newSessionCwd, selectedSession]);
 
   const handleNewSession = useCallback((sessionId: string, cwd: string) => {
-    setSelectedProviderSession(null);
     invalidateWorkspaceRestore();
     const draftKey = `new:${sessionId}:${cwd}`;
     rekeyDraft(parkedNewSessionDraftKey(cwd), draftKey);
@@ -829,7 +839,7 @@ export function AppShell() {
 
   // Global keyboard shortcuts (handles Esc, Ctrl+Alt+N etc.)
   useGlobalKeyboardShortcuts({
-    onNewSession: (cwd: string) => handleNewSession(`kb-${Date.now()}`, cwd),
+    onNewSession: () => openRuntimeNew(),
     activeCwd,
   });
 
@@ -1216,8 +1226,9 @@ export function AppShell() {
   const sidebarContent = (
     <>
       <SessionSidebar
+        executionContent={<ExecutionSidebar groups={executionGroups} selected={execution.selection} onSelect={ref => { setSelectedSession(null); setNewSessionCwd(null); execution.select(ref); if (isMobile) setSidebarOpen(false); }} onNew={openRuntimeNew} />}
         selectedSessionId={selectedSession?.id ?? null}
-        onSelectSession={handleSelectSession}
+        onSelectSession={(session, isRestore, entryId, blockIndex) => { handleSelectSession(session, isRestore, entryId, blockIndex); execution.setSelection({ connectionId: "local", backend: "pi", id: session.id }); }}
         onNewSession={handleNewSession}
         initialSessionId={initialSessionId}
         skipInitialProjectSelection={initialNavigation.requestedCwd !== null}
@@ -1235,9 +1246,6 @@ export function AppShell() {
         onBackgroundTaskDone={handleBackgroundTaskDone}
         onRunningSessionIdsChange={handleRunningSessionIdsChange}
         onSessionsChange={handleSessionsChange}
-        selectedProviderSession={selectedProviderSession}
-        onSelectProviderSession={selection => { setSelectedProviderSession(selection); if (isMobile) setSidebarOpen(false); }}
-        onManageConnections={() => setConnectionsOpen(true)}
       />
       <div style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "space-between", gap: 4 }}>
         {([
@@ -1932,6 +1940,7 @@ export function AppShell() {
     }}>
       {dotOpen && <DotFloatingPanel onClose={() => setDotOpen(false)} />}
       {connectionsOpen && <RemoteConnections onClose={() => setConnectionsOpen(false)} />}
+      {newRuntimeOpen && <NewRuntimeSession label={newExecutionGroup?.label || "로컬"} backends={newExecutionGroup?.backends || [execution.target.backend]} backend={execution.target.backend} onBackendChange={backend => execution.setTarget({ ...execution.target, backend })} models={execution.models} busy={execution.creating} error={execution.error} onCreate={execution.create} onClose={() => setNewRuntimeOpen(false)} />}
       {/* Mobile overlay backdrop */}
       <div
         className={`sidebar-overlay-backdrop${mobileSidebarReady ? "" : " sidebar-mobile-pending"}`}
@@ -2358,8 +2367,7 @@ export function AppShell() {
 
         {/* Chat content */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-          <SessionViewHost selection={selectedProviderSession} onClose={() => setSelectedProviderSession(null)}>
-          {showChat ? (
+          {execution.selection ? <RuntimeChatWindow key={sessionRefKey(execution.selection)} session={execution.selection} onClose={() => { execution.setSelection(null); setSelectedSession(null); setNewSessionCwd(null); }} onUpdated={() => void execution.reload().catch(() => {})} /> : showChat && selectedSession ? (
             <ChatWindow
               key={sessionKey}
               session={selectedSession}
@@ -2429,14 +2437,13 @@ export function AppShell() {
                 <div>
                    <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>{translate("workspace.getStarted")}</div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.8 }}>
-                     <span style={{ color: "var(--text-dim)", marginRight: 6 }}>1.</span>{translate("workspace.selectProject")}<br />
-                     <span style={{ color: "var(--text-dim)", marginRight: 6 }}>2.</span>{translate("workspace.addModels")}
+                     <span style={{ color: "var(--text-dim)", marginRight: 6 }}>1.</span>컴퓨터 아래의 세션을 클릭하세요.<br />
+                     <span style={{ color: "var(--text-dim)", marginRight: 6 }}>2.</span>컴퓨터 옆의 +를 누르면 그곳에 새 스레드가 만들어집니다.
                   </div>
                 </div>
               </div>
             )
           ) : null}
-          </SessionViewHost>
         </div>
       </div>
 

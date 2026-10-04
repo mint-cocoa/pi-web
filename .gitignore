@@ -46,3 +46,5 @@ next-env.d.ts
 e2e_*.mjs
 # Built from the single dot-client source when packing the Pi plugin.
 packages/pi-dot/vendor/
+__pycache__/
+*.pyc
