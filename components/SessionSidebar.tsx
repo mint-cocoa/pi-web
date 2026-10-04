@@ -1844,7 +1844,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             else onSelectProviderSession(selection);
           }} onManageConnections={onManageConnections}
           renderLocalGroup={children => <SessionSearch open={sessionSearchOpen} query={sessionSearchQuery} selectedSessionId={selectedSessionId} onSelectSession={handleSelectSessionFromList}>{children}</SessionSearch>}
-          renderInteractive={(item, actions, activate) => {
+          viewAdapters={[{ id: "native-pi-row", target: { connectionId: "local", backend: "pi" }, row: ({ session: item, actions, activate }) => {
             if (!navigationLocalSessions.some(native => sessionRefKey(native) === sessionRefKey(item))) return null;
             const family = sessionFamilies.find(value => value.root.id === item.id);
             if (!family) return null;
@@ -1852,7 +1852,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               isSelected={item.selected || false} isRunning={item.running} isUnread={item.unread}
               onClick={activate} onRenamed={loadSessions}
               onDeleted={id => { onSessionDeleted?.(id); void loadSessions(); }} />;
-          }} />
+          } }, { id: "standard-session-row" }]} />
         </div>
       </div>
 

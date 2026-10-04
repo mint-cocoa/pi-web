@@ -2,6 +2,12 @@
 
 ## Connection navigation
 
+### Display adapters
+
+`lib/session-view.ts` is the pure UI model/registration contract, separate from SessionProvider. SessionViewModel exposes labels and supported controls without transport details. SessionViewRegistry resolves registered SessionViewAdapter targets by exact connection/backend, backend, then fallback; adapters may supply row and conversation renderers and choose native/overlay layout. Targets are captured immutably; ambiguous duplicate registrations are refused.
+
+`components/session-views` holds React renderer context types and SessionViewHost. The host resolves the conversation adapter and keeps the native Pi tree mounted/inert behind overlay views so drafts, runs and subscriptions survive. ConnectionSidebar resolves row adapters instead of deciding rich rendering from transport or send/live flags. SessionSidebar registers its existing native Pi row renderer; the standard row handles all other sources. AppShell delegates its content switch to the shared view host. The transcript renderer uses SessionViewModel for header/control display and still calls provider.read(ref) only. These are display seams; the existing rich Pi widgets are preserved, not flattened into the text projection.
+
 ### Common session providers
 
 `lib/session-provider.ts` is the transport-neutral contract: SessionRef(connectionId/backend/id), SessionSummary, SessionTranscript, SessionProvider and SessionProviderRegistry. It imports no React, Pi SDK, SSH or filesystem code. The registry resolves the full reference, validates catalog ownership and returns the same typed selection for every source. Providers expose list/read/send/rename/remove/subscribe; unsupported operations fail before transport. Capabilities are immutable and derived from actual implementations. Transient records cannot undergo disk mutations. One broken provider does not discard other providers' lists.

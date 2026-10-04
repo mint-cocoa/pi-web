@@ -4,16 +4,18 @@ import { useConnectionNavigation } from "@/hooks/useConnectionNavigation";
 import { connectionRequest } from "@/lib/connections/client";
 import { SessionProviderRegistry, type SessionSelection } from "@/lib/session-provider";
 import { createLocalPiProvider, createSshSessionProvider } from "@/lib/session-provider-adapters";
+import { SessionViewRegistry } from "@/lib/session-view";
+import type { SessionUiAdapter } from "../session-views/types";
 import { buildNavigation, DEFAULT_NAVIGATION, isNavigationArchived, isNavigationPinned, navigationKey,
   NAVIGATION_STORAGE_KEY, readNavigationPreferences, toggleNavigationArchive, toggleNavigationPin, type NavigationPreferences, type NavigationSession } from "@/lib/connections/navigation";
 
-export function ConnectionSidebar({ localSessions, selectedSession, query = "", onSelectSession, onManageConnections, renderInteractive, renderLocalGroup }: {
+export function ConnectionSidebar({ localSessions, selectedSession, query = "", onSelectSession, onManageConnections, viewAdapters, renderLocalGroup }: {
   localSessions: NavigationSession[];
   selectedSession?: SessionSelection | null;
   query?: string;
   onSelectSession: (selection: SessionSelection) => void;
   onManageConnections: () => void;
-  renderInteractive: (session: NavigationSession, actions: ReactNode, activate: () => void) => ReactNode;
+  viewAdapters: readonly SessionUiAdapter[];
   renderLocalGroup: (children: ReactNode) => ReactNode;
 }) {
   const { connections, error, reload } = useConnectionNavigation();
@@ -43,6 +45,7 @@ export function ConnectionSidebar({ localSessions, selectedSession, query = "", 
     return (["pi", "codex"] as const).map(backend => createSshSessionProvider({ id: connection.id, alias: connection.alias, label: connection.label }, backend, () => sessions.filter(session => session.backend === backend)));
   })], [connections, localSessions]);
   const registry = useMemo(() => new SessionProviderRegistry(providers), [providers]);
+  const views = useMemo(() => new SessionViewRegistry(viewAdapters), [viewAdapters]);
   const groups = useMemo(() => {
     const byConnection = new Map<string, { id: string; alias: string; label: string; sessions: NavigationSession[] }>();
     for (const provider of providers) {
@@ -82,10 +85,8 @@ export function ConnectionSidebar({ localSessions, selectedSession, query = "", 
     const key = navigationKey(session);
     const provider = registry.get(session), connection = provider.connection;
     const activate = () => onSelectSession(registry.select(session));
-    if (provider.capabilities.send && provider.capabilities.live) {
-      const interactive = renderInteractive(session, actions(session), activate);
-      if (interactive) return <div className="connection-nav-local-row" key={key}>{interactive}</div>;
-    }
+    const customRow = views.resolve(session).row?.({ session, provider, actions: actions(session), activate });
+    if (customRow) return <div className="connection-nav-local-row" key={key}>{customRow}</div>;
     const selected = selectedSession && navigationKey(selectedSession.ref) === key;
     return <div key={key} className={"connection-nav-row" + (selected ? " is-selected" : "")}>
       <button type="button" className="connection-nav-session" aria-current={selected ? "page" : undefined} title={`${connection.label} · ${session.backend}\n${session.cwd}\n${session.title}`}

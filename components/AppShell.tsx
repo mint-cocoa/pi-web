@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } fr
 import { useRouter, useSearchParams } from "next/navigation";
 import { DotFloatingPanel } from "./dot/DotFloatingPanel";
 import { RemoteConnections } from "./connections/RemoteConnections";
-import { SessionTranscriptView } from "./connections/RemoteSessionView";
+import { SessionViewHost } from "./session-views/SessionViewHost";
 import type { SessionSelection } from "@/lib/session-provider";
 import "./connections/connection-navigation.css";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -2358,8 +2358,7 @@ export function AppShell() {
 
         {/* Chat content */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-          {selectedProviderSession && <SessionTranscriptView key={`${selectedProviderSession.ref.connectionId}:${selectedProviderSession.ref.backend}:${selectedProviderSession.ref.id}`} selection={selectedProviderSession} onClose={() => setSelectedProviderSession(null)} />}
-          <div inert={selectedProviderSession !== null} style={{ display: selectedProviderSession ? "none" : "contents" }}>
+          <SessionViewHost selection={selectedProviderSession} onClose={() => setSelectedProviderSession(null)}>
           {showChat ? (
             <ChatWindow
               key={sessionKey}
@@ -2437,7 +2436,7 @@ export function AppShell() {
               </div>
             )
           ) : null}
-          </div>
+          </SessionViewHost>
         </div>
       </div>
 

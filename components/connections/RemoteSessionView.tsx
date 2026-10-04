@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { SessionSelection, SessionTranscript } from "@/lib/session-provider";
+import { sessionViewModel } from "@/lib/session-view";
 
 export function SessionTranscriptView({ selection, onClose }: { selection: SessionSelection; onClose: () => void }) {
+  const view = sessionViewModel(selection);
   const [data, setData] = useState<SessionTranscript>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -23,8 +25,8 @@ export function SessionTranscriptView({ selection, onClose }: { selection: Sessi
     event.stopPropagation();
     if (event.key === "Escape" && !event.nativeEvent.isComposing) { event.preventDefault(); onClose(); }
   }}>
-    <header><div><small>{selection.provider.connection.label} · {selection.ref.backend} · 읽기 전용</small><h2>{selection.summary.title}</h2><p>{selection.summary.cwd}</p></div>
-      <button type="button" disabled={loading} onClick={() => setRevision(value => value + 1)}>새로고침</button><button type="button" onClick={onClose}>로컬로 돌아가기</button>
+    <header><div><small>{view.subtitle} · 읽기 전용 보기</small><h2>{view.title}</h2><p>{view.cwd}</p></div>
+      <button type="button" disabled={loading || !view.canRead} onClick={() => setRevision(value => value + 1)}>새로고침</button><button type="button" onClick={onClose}>이전 화면으로</button>
     </header>
     <div className="remote-session-body">
       {loading && <p role="status">원격 대화 불러오는 중…</p>}
