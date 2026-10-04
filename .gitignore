@@ -44,3 +44,5 @@ yarn-error.log*
 next-env.d.ts
 .factory
 e2e_*.mjs
+# Built from the single dot-client source when packing the Pi plugin.
+packages/pi-dot/vendor/

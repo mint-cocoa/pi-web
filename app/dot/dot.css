@@ -1,0 +1,43 @@
+.dot-workspace { height: 100dvh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); overflow: hidden; }
+.dot-header { display: flex; gap: 20px; padding: 14px 20px; align-items: center; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.dot-header h1 { font-size: 18px; margin: 0; }
+.dot-header a { color: var(--text-muted); text-decoration: none; }
+.dot-header label { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.dot-header select { max-width: 260px; }
+.dot-grid { display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(440px, 1.2fr); gap: 1px; background: var(--border); flex: 1; min-height: 0; }
+.dot-chat, .dot-computer { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--bg); }
+.dot-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 50px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.dot-toolbar strong { margin-right: auto; }
+.dot-toolbar span { font-size: 12px; color: var(--text-muted); }
+.dot-workspace button, .dot-workspace select { color: var(--text); background: var(--bg-panel); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; font-size: 13px; }
+.dot-workspace button { cursor: pointer; }
+.dot-workspace button:disabled { opacity: .5; cursor: default; }
+.dot-workspace button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.dot-workspace button:focus-visible, .dot-workspace textarea:focus-visible, .dot-workspace select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dot-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 18px; }
+.dot-message { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; background: var(--bg-panel); }
+.dot-message.user { margin-left: 24px; background: var(--user-bg); }
+.dot-message-meta { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 11px; margin-bottom: 8px; gap: 10px; }
+.dot-message-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.65; }
+.dot-composer { display: flex; gap: 10px; padding: 14px; border-top: 1px solid var(--border); }
+.dot-composer textarea { flex: 1; min-width: 0; resize: vertical; min-height: 72px; max-height: 200px; background: var(--bg-panel); color: var(--text); border: 1px solid var(--border); border-radius: 9px; padding: 10px; }
+.dot-note { color: var(--text-muted); font-size: 13px; padding: 12px 16px; margin: 0; }
+.dot-error { padding: 10px 16px; margin: 0; color: #e58d75; font-size: 13px; overflow-wrap: anywhere; }
+.dot-video-area { position: relative; flex: 1; min-height: 280px; background: #101318; }
+.dot-video-area video { width: 100%; height: 100%; position: absolute; inset: 0; object-fit: contain; outline: none; }
+.dot-video-area video.is-controlled:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.dot-video-placeholder { position: absolute; inset: 0; display: grid; place-content: center; color: #a5adb9; padding: 20px; text-align: center; }
+@media (max-width: 850px) { .dot-workspace { overflow-y: auto; height: auto; min-height: 100dvh; } .dot-grid { grid-template-columns: 1fr; } .dot-chat { min-height: 480px; max-height: 65dvh; } .dot-computer { min-height: 420px; } .dot-header label { margin-left: 0; } }
+.dot-floating-panel { position: fixed; z-index: 900; display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 18px 70px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.25); overflow: hidden; }
+.dot-floating-titlebar { height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 14px; background: var(--bg-panel); border-bottom: 1px solid var(--border); cursor: grab; touch-action: none; user-select: none; }
+.dot-floating-titlebar:active { cursor: grabbing; }
+.dot-floating-title { margin-right: auto; font-size: 13px; color: var(--text); }
+.dot-floating-titlebar button, .dot-floating-titlebar a { width: 30px; height: 30px; display: grid; place-content: center; border: none; border-radius: 7px; background: transparent; color: var(--text-muted); cursor: pointer; text-decoration: none; font-size: 19px; }
+.dot-floating-titlebar button:hover, .dot-floating-titlebar a:hover { background: var(--bg-hover); color: var(--text); }
+.dot-floating-body { flex: 1; min-height: 0; container-type: inline-size; }
+.dot-floating-body[hidden] { display: none; }
+.dot-floating-resize { position: absolute; bottom: 2px; right: 2px; width: 18px; height: 18px; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, var(--text-muted) 52%, transparent 55%, transparent 65%, var(--text-muted) 67%, transparent 70%); opacity: .6; }
+.dot-workspace.is-embedded { height: 100%; min-height: 0; overflow: hidden; border-radius: 0 0 16px 16px; }
+.dot-workspace.is-embedded .dot-header { padding: 6px 12px; }
+.dot-workspace.is-embedded .dot-header label { margin-left: auto; font-size: 12px; }
+@container (max-width: 850px) { .dot-workspace.is-embedded { overflow-y: auto; } .dot-workspace.is-embedded .dot-grid { display: flex; flex-direction: column; flex: auto; } .dot-workspace.is-embedded .dot-chat { min-height: 300px; max-height: 400px; flex-shrink: 0; } .dot-workspace.is-embedded .dot-computer { min-height: 300px; flex-shrink: 0; } }

@@ -1,0 +1,15 @@
+{
+  "name": "@mint-cocoa/dot-client",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    "./core": { "types": "./core.d.mts", "default": "./core.mjs" },
+    "./server": { "types": "./server.d.mts", "default": "./server.mjs" },
+    "./browser": { "types": "./browser.d.mts", "default": "./browser.mjs" },
+    "./python": { "types": "./python-http.d.mts", "default": "./python-http.mjs" }
+  },
+  "files": ["*.mjs", "*.d.mts", "README.md"],
+  "scripts": { "test": "node --test tests/*.test.mjs" },
+  "engines": { "node": ">=22.19.0" }
+}

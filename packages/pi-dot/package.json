@@ -1,0 +1,11 @@
+{
+  "name": "@mint-cocoa/pi-dot",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Dot tools and commands backed by Pi's existing ChatGPT subscription login",
+  "pi": { "extensions": ["./index.ts"] },
+  "peerDependencies": { "@earendil-works/pi-coding-agent": "^1.0.0", "typebox": "^1.0.0" },
+  "files": ["index.ts", "plugin.mjs", "plugin.d.mts", "pi-credentials.mjs", "pi-credentials.d.mts", "vendor", "README.md"],
+  "scripts": { "build": "node build.mjs", "prepack": "node build.mjs" }
+}

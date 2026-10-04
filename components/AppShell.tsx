@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { DotFloatingPanel } from "./dot/DotFloatingPanel";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
 import { ChatWindow } from "./ChatWindow";
@@ -80,6 +81,7 @@ function parkedNewSessionDraftKey(cwd: string): string {
 export function AppShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [dotOpen, setDotOpen] = useState(false);
   const [initialNavigation, setInitialNavigation] = useState(() => getInitialNavigation(searchParams));
   // Keep the system-theme subscription mounted for the lifetime of the app.
   useTheme();
@@ -1917,6 +1919,7 @@ export function AppShell() {
       overflow: "hidden",
       background: "var(--bg)",
     }}>
+      {dotOpen && <DotFloatingPanel onClose={() => setDotOpen(false)} />}
       {/* Mobile overlay backdrop */}
       <div
         className={`sidebar-overlay-backdrop${mobileSidebarReady ? "" : " sidebar-mobile-pending"}`}
@@ -2037,6 +2040,8 @@ export function AppShell() {
               )}
               {!isNarrowMobile && renderChatToolbarActions(true)}
               {renderSessionStatsButton(true)}
+              <button type="button" onClick={() => setDotOpen(true)} aria-label={translate("dot.open")}
+                aria-expanded={dotOpen} style={{ padding: "8px 12px", color: "var(--text-muted)", border: "none", background: "transparent", cursor: "pointer" }}>Dot</button>
               {renderMainFileToggle(true)}
               {isNarrowMobile && mobileToolbarMoreOpen && (
                 <div
@@ -2070,6 +2075,8 @@ export function AppShell() {
               {renderSessionStatsButton(false)}
             </>
           )}
+          {!isMobile && <button type="button" onClick={() => setDotOpen(true)} aria-label={translate("dot.open")}
+            aria-expanded={dotOpen} style={{ padding: "8px 12px", color: "var(--text-muted)", border: "none", background: "transparent", cursor: "pointer" }}>Dot</button>}
           {!isMobile && renderMainFileToggle(false)}
           {isMobile && sessionHasBranches && (
             <BranchNavigator

@@ -185,6 +185,9 @@ hooks/
 
 ## Topic Notes
 
+- Dot integration: read [dot.md](docs/agents/dot.md) before changing `packages/dot-client`,
+  `packages/pi-dot`, `lib/dot`, `app/api/dot`, `components/dot` or the Dot hook.
+
 Design decisions and traps live in `docs/agents/`, one note per area. Read every note whose files a change touches before making it. Add new notes to the area's file, not here.
 
 - [sessions.md](docs/agents/sessions.md): AgentSession lifecycle and shutdown, fork vs in-session branching, session file rewrites, toolCall normalization, SSE reconnect and tool events, transcript system / usage / context-edit entries, running-state polling, exported HTML. Files: `lib/rpc-manager.ts`, `lib/session-reader.ts`, `lib/normalize.ts`, `hooks/useAgentSession.ts`, `app/api/agent/**`, `app/api/sessions/**`, `components/BranchNavigator.tsx`, `components/MessageView.tsx`, `components/CodemodeToolView.tsx`.

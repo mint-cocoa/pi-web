@@ -32,20 +32,25 @@
     "!.next/**/*.js.map",
     "public",
     "next.config.ts",
-    "package.json"
+    "package.json",
+    "packages/dot-client",
+    "packages/pi-dot",
+    "packages/pi-dot/vendor"
   ],
   "scripts": {
     "postinstall": "node bin/prepare-terminal.js",
     "dev": "next dev -H 127.0.0.1 -p 30141",
     "dev:lan": "next dev -H 0.0.0.0 -p 30141",
-    "build": "next build --webpack",
+    "build": "npm run build:dot-plugin && next build --webpack",
     "start": "next start -H 127.0.0.1 -p 30141",
     "start:lan": "next start -H 0.0.0.0 -p 30141",
     "lint": "eslint .",
     "test:terminal": "node e2e/terminal.mjs",
     "test:e2e": "node e2e/run.mjs",
     "test": "node --experimental-strip-types --test \"app/**/*.test.mjs\" \"components/**/*.test.mjs\" \"hooks/**/*.test.mjs\" \"lib/**/*.test.mjs\" \"public/**/*.test.mjs\"",
-    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public"
+    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public",
+    "test:dot": "node --test packages/dot-client/tests/*.test.mjs packages/pi-dot/tests/*.test.mjs",
+    "build:dot-plugin": "node packages/pi-dot/build.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "1.0.0",
