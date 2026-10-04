@@ -4,6 +4,9 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } fr
 import { useRouter, useSearchParams } from "next/navigation";
 import { DotFloatingPanel } from "./dot/DotFloatingPanel";
 import { RemoteConnections } from "./connections/RemoteConnections";
+import { RemoteSessionView } from "./connections/RemoteSessionView";
+import type { RemoteSelection } from "@/lib/connections/client";
+import "./connections/connection-navigation.css";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
 import { ChatWindow } from "./ChatWindow";
@@ -84,6 +87,7 @@ export function AppShell() {
   const searchParams = useSearchParams();
   const [dotOpen, setDotOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
+  const [selectedRemote, setSelectedRemote] = useState<RemoteSelection | null>(null);
   const [initialNavigation, setInitialNavigation] = useState(() => getInitialNavigation(searchParams));
   // Keep the system-theme subscription mounted for the lifetime of the app.
   useTheme();
@@ -743,6 +747,7 @@ export function AppShell() {
   }, [activeCwd, activeFileTabId, invalidateWorkspaceRestore, newSessionCwd, router, selectedSession, restoreWorkspaceContext]);
 
   const handleSelectSession = useCallback((session: SessionInfo, isRestore = false, entryId?: string, blockIndex?: number) => {
+    setSelectedRemote(null);
     setSearchTarget(entryId ? { sessionId: session.id, entryId, blockIndex } : null);
     invalidateWorkspaceRestore();
     const activeDraftKey = activeNewSessionDraftKeyRef.current;
@@ -802,6 +807,7 @@ export function AppShell() {
   }, [activeCwd, activeFileTabId, invalidateWorkspaceRestore, router, isMobile, newSessionCwd, selectedSession]);
 
   const handleNewSession = useCallback((sessionId: string, cwd: string) => {
+    setSelectedRemote(null);
     invalidateWorkspaceRestore();
     const draftKey = `new:${sessionId}:${cwd}`;
     rekeyDraft(parkedNewSessionDraftKey(cwd), draftKey);
@@ -1229,6 +1235,9 @@ export function AppShell() {
         onBackgroundTaskDone={handleBackgroundTaskDone}
         onRunningSessionIdsChange={handleRunningSessionIdsChange}
         onSessionsChange={handleSessionsChange}
+        selectedRemote={selectedRemote}
+        onSelectRemote={selection => { setSelectedRemote(selection); if (isMobile) setSidebarOpen(false); }}
+        onManageConnections={() => setConnectionsOpen(true)}
       />
       <div style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "space-between", gap: 4 }}>
         {([
@@ -2349,6 +2358,8 @@ export function AppShell() {
 
         {/* Chat content */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+          {selectedRemote && <RemoteSessionView key={`${selectedRemote.connection.id}:${selectedRemote.session.backend}:${selectedRemote.session.id}`} selection={selectedRemote} onClose={() => setSelectedRemote(null)} />}
+          <div inert={selectedRemote !== null} style={{ display: selectedRemote ? "none" : "contents" }}>
           {showChat ? (
             <ChatWindow
               key={sessionKey}
@@ -2426,6 +2437,7 @@ export function AppShell() {
               </div>
             )
           ) : null}
+          </div>
         </div>
       </div>
 

@@ -5,16 +5,11 @@ import { ConfigPanelShell, ConfigSplitView, ConfigSidebar, ConfigSidebarList, Co
   ConfigButton, ConfigSaveTarget, ConfigDetailGrid, ConfigDetailGridRow } from "../SettingsUi";
 import { openStackedDialog } from "@/lib/stacked-dialog";
 import type { RemoteConnection, RemoteTranscript } from "@/lib/connections/types";
+import { connectionRequest as api } from "@/lib/connections/client";
 import "./remote-connections.css";
 
 interface Snapshot { connections: RemoteConnection[]; aliases: string[]; configPath: string }
 const STATES = { disconnected: "연결 해제", connecting: "연결 중", connected: "연결됨", error: "연결 오류" };
-async function api<T>(body?: Record<string, unknown>): Promise<T> {
-  const response = await fetch("/api/connections", body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), cache: "no-store" } : { cache: "no-store" });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "연결 요청에 실패했습니다.");
-  return result;
-}
 
 export function RemoteConnections({ onClose }: { onClose: () => void }) {
   const panel = useRef<HTMLDivElement>(null);

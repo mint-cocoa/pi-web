@@ -1,5 +1,15 @@
 # Remote SSH connections
 
+## Connection navigation
+
+`lib/connections/navigation.ts` is a pure common-list model. Identities include connection id, backend and session id; server order is stable, local first then cocoamini/oracle/other profiles, and each server's records sort by actual timestamp descending. The UI renders five rows initially and adds five per More. `hooks/useConnectionNavigation` polls registered connections without initiating SSH, cancels reads on unmount and ignores superseded replies. Last titles remain in memory after disconnect; the badge still reflects actual SSH state. Changing an alias or removing a profile discards its cached inventory.
+
+`ConnectionSidebar` renders pinned rows, host groups, menus for explicit connect/disconnect/refresh/reorder, and browser-scoped pin/archive preferences. These never modify native Codex flags or remote session files; native flags provide defaults. Existing native archived records are hidden until the archive switch is enabled. Search matches remote titles/paths; local full-text search stays in its local group. The workspace chooser belongs to local Pi creation/file access and no longer filters the entire navigation. "Local" means the Pi Web server's Pi sessions, not the browser device's filesystem.
+
+SessionSidebar still owns local SDK sessions, families/subagents, running/unread state, rename/delete, workspace selection and the file explorer. It passes all local families to the navigation, regardless of selected project. Remote records must never enter its onSessionsChange/local agent registry.
+
+AppShell owns a separate typed remote selection. RemoteSessionView loads a bounded read-only transcript into the main area and validates connection alias and backend before reading. Local ChatWindow stays mounted but hidden/inert, retaining its existing run and draft; selecting local or creating a new session returns to it. Remote selection never writes the local ?session= URL or passes remote cwd/path into local file APIs. Remote transcript keys are handled inside the view, so Escape returns to local instead of stopping the background local agent. Remote agent running status is unknown and must not be invented from saved files or SSH connectivity.
+
 Main toolbar **연결** opens `components/connections/RemoteConnections`. Shared SettingsUi blocks handle layout, forms and controls; the modal owns Escape, focus restoration and Tab cycling. Closing the panel leaves registered connections alive. Names are currently Korean custom UI strings.
 
 `lib/connections` is independent of AppShell, the local AgentSession registry and Dot. The UI calls `/api/connections`; every request passes the normal host/origin guard and the existing web-password proxy. Actions: save/remove/connect/disconnect/refresh/transcript. No arbitrary remote commands, paths, password uploads or key transfers.

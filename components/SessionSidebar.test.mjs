@@ -58,7 +58,8 @@ test("persists and exposes a vertical session/explorer resize handle", () => {
 test("does not register row-level session deletion shortcuts", () => {
   assert.doesNotMatch(sessionItemSource, /const handleKeyDown/);
   assert.doesNotMatch(sessionItemSource, /onKeyDown=\{handleKeyDown\}/);
-  assert.doesNotMatch(sessionItemSource, /tabIndex=\{0\}/);
+  // Rows may be focused and activated with Enter/Space; deletion stays explicit.
+  assert.doesNotMatch(sessionItemSource, /(?:key|code)\s*===\s*["'](?:Delete|Backspace)["']/);
 });
 
 test("polls running sessions only while the tab is visible", () => {
@@ -143,8 +144,8 @@ test("does not expose disk-backed actions for transient sessions", () => {
 });
 
 test("hides subagent rows and aggregates their state into the main session row", () => {
-  assert.match(source, /const sessionFamilies = useMemo\(\(\) => listSessionFamilies\(filteredSessions\)/);
-  assert.match(source, /familySessions\.some\(\(session\) => session\.id === selectedSessionId\)/);
-  assert.match(source, /familySessions\.some\(\(session\) => runningSessionIds\.has\(session\.id\)\)/);
+  assert.match(source, /const sessionFamilies = useMemo\(\(\) => listSessionFamilies\(allSessions\)/);
+  assert.match(source, /\[family\.root, \.\.\.family\.subagents\]\.some\(session => session\.id === selectedSessionId\)/);
+  assert.match(source, /\[family\.root, \.\.\.family\.subagents\]\.some\(session => runningSessionIds\.has\(session\.id\)\)/);
   assert.doesNotMatch(source, /function SessionTreeItem/);
 });

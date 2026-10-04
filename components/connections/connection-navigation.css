@@ -1,0 +1,52 @@
+.connection-navigation { padding: 8px 7px 18px; }
+.connection-nav-section-heading { display: flex; align-items: center; justify-content: space-between; margin: 14px 7px 8px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+.connection-nav-section-heading small { color: var(--text-dim); font-size: 10px; font-weight: 400; }
+.connection-nav-section-heading button { border: 0; color: var(--text-muted); background: transparent; cursor: pointer; font-size: 20px; }
+.connection-nav-group { margin-top: 16px; }
+.connection-nav-host-row { position: relative; display: flex; align-items: center; gap: 7px; min-height: 34px; }
+.connection-nav-host { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; text-align: left; padding: 7px 2px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+.connection-nav-host span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.connection-nav-chevron { font-size: 11px; width: 8px; }
+.connection-nav-status { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
+.connection-nav-status.is-connected { background: #37b877; }
+.connection-nav-status.is-error { background: #e76c6c; }
+.connection-nav-status.is-connecting { background: #d8aa45; animation: connection-nav-pulse 1s infinite alternate; }
+@keyframes connection-nav-pulse { to { opacity: .3; } }
+.connection-nav-connect, .connection-nav-menu-toggle { background: transparent; border: 0; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 4px; }
+.connection-nav-menu-toggle { font-size: 18px; }
+.connection-nav-menu { position: absolute; right: 4px; top: 32px; min-width: 140px; z-index: 60; padding: 5px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-panel); box-shadow: 0 5px 22px #0005; }
+.connection-nav-menu button { display: block; width: 100%; text-align: left; padding: 8px; background: transparent; color: var(--text); border: 0; border-radius: 5px; cursor: pointer; font-size: 12px; }
+.connection-nav-menu button:hover { background: var(--bg-hover); }
+.connection-nav-menu button:disabled { opacity: .4; cursor: default; }
+.connection-nav-row { display: flex; align-items: center; position: relative; min-height: 36px; border-radius: 9px; padding-left: 33px; }
+.connection-nav-row:hover, .connection-nav-row:focus-within { background: var(--bg-hover); }
+.connection-nav-row.is-selected { background: var(--bg-selected); }
+.connection-nav-session { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); text-align: left; padding: 8px 5px 8px 0; cursor: pointer; font-size: 13px; line-height: 1.45; }
+.connection-nav-title { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.connection-nav-session small { display: block; font-size: 10px; color: var(--text-dim); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.connection-nav-row-actions { display: none; gap: 2px; flex-shrink: 0; }
+.connection-nav-row:hover > .connection-nav-row-actions, .connection-nav-row:focus-within > .connection-nav-row-actions { display: flex; }
+.connection-nav-row-actions button { display: flex; align-items: center; justify-content: center; width: 24px; height: 26px; padding: 0; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 5px; }
+.connection-nav-row-actions button:hover { color: var(--text); background: var(--bg-selected); }
+.connection-nav-local-row { border-radius: 9px; overflow: hidden; }
+.connection-nav-local-row .connection-nav-row-actions { display: flex; }
+.connection-nav-more { display: block; margin: 3px 0 7px 33px; padding: 6px 0; background: transparent; border: 0; color: var(--text-dim); cursor: pointer; font-size: 13px; }
+.connection-nav-more:hover { color: var(--text); }
+.connection-nav-note { margin: 6px 8px 9px 33px; font-size: 11px; line-height: 1.6; color: var(--text-dim); }
+.connection-nav-error { color: #e76c6c; font-size: 11px; padding: 4px 8px; overflow-wrap: anywhere; }
+.connection-nav-archive-toggle { display: flex; align-items: center; gap: 6px; margin: 24px 8px 0; font-size: 11px; color: var(--text-dim); cursor: pointer; }
+.connection-nav-workspace { margin-top: 7px; }
+.connection-nav-workspace summary { padding: 5px 0; font-size: 11px; color: var(--text-dim); cursor: pointer; }
+.remote-session-view { display: flex; flex-direction: column; position: absolute; inset: 0; background: var(--bg); outline: none; }
+.remote-session-view > header { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px; padding: 18px 24px; border-bottom: 1px solid var(--border); }
+.remote-session-view > header > div { flex: 1; min-width: 180px; }
+.remote-session-view small { color: var(--text-muted); font-size: 11px; }
+.remote-session-view h2 { font-size: 18px; margin: 7px 0; overflow-wrap: anywhere; }
+.remote-session-view header p { margin: 0; color: var(--text-dim); font: 11px var(--font-mono); overflow-wrap: anywhere; }
+.remote-session-view header button { color: var(--text-muted); background: var(--bg-hover); padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 12px; cursor: pointer; }
+.remote-session-body { flex: 1; overflow: auto; padding: 20px 24px; }
+.remote-message { max-width: 1000px; margin: 0 auto 16px; padding: 16px; border-radius: 10px; background: var(--bg-panel); }
+.remote-message.is-user { background: var(--user-bg); }
+.remote-message pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; line-height: 1.8; margin: 7px 0 0; }
+.remote-session-view footer { padding: 12px 24px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 11px; }
+@media (hover: none) { .connection-nav-row > .connection-nav-row-actions { display: flex; } }
