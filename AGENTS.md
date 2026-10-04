@@ -185,6 +185,8 @@ hooks/
 
 ## Topic Notes
 
+- Remote SSH connections: read [remote-connections.md](docs/agents/remote-connections.md) before changing `lib/connections`, `app/api/connections` or `components/connections`.
+
 - Dot integration: read [dot.md](docs/agents/dot.md) before changing `packages/dot-client`,
   `packages/pi-dot`, `lib/dot`, `app/api/dot`, `components/dot` or the Dot hook.
 

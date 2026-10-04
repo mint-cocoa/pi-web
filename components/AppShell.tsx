@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DotFloatingPanel } from "./dot/DotFloatingPanel";
+import { RemoteConnections } from "./connections/RemoteConnections";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
 import { ChatWindow } from "./ChatWindow";
@@ -82,6 +83,7 @@ export function AppShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [dotOpen, setDotOpen] = useState(false);
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [initialNavigation, setInitialNavigation] = useState(() => getInitialNavigation(searchParams));
   // Keep the system-theme subscription mounted for the lifetime of the app.
   useTheme();
@@ -1920,6 +1922,7 @@ export function AppShell() {
       background: "var(--bg)",
     }}>
       {dotOpen && <DotFloatingPanel onClose={() => setDotOpen(false)} />}
+      {connectionsOpen && <RemoteConnections onClose={() => setConnectionsOpen(false)} />}
       {/* Mobile overlay backdrop */}
       <div
         className={`sidebar-overlay-backdrop${mobileSidebarReady ? "" : " sidebar-mobile-pending"}`}
@@ -2040,6 +2043,8 @@ export function AppShell() {
               )}
               {!isNarrowMobile && renderChatToolbarActions(true)}
               {renderSessionStatsButton(true)}
+              <button type="button" onClick={() => setConnectionsOpen(true)} aria-label="원격 연결 관리" aria-expanded={connectionsOpen}
+                style={{ padding: "8px 12px", color: "var(--text-muted)", border: "none", background: "transparent", cursor: "pointer" }}>연결</button>
               <button type="button" onClick={() => setDotOpen(true)} aria-label={translate("dot.open")}
                 aria-expanded={dotOpen} style={{ padding: "8px 12px", color: "var(--text-muted)", border: "none", background: "transparent", cursor: "pointer" }}>Dot</button>
               {renderMainFileToggle(true)}
@@ -2075,6 +2080,8 @@ export function AppShell() {
               {renderSessionStatsButton(false)}
             </>
           )}
+          {!isMobile && <button type="button" onClick={() => setConnectionsOpen(true)} aria-label="원격 연결 관리" aria-expanded={connectionsOpen}
+            style={{ padding: "8px 12px", color: "var(--text-muted)", border: "none", background: "transparent", cursor: "pointer" }}>연결</button>}
           {!isMobile && <button type="button" onClick={() => setDotOpen(true)} aria-label={translate("dot.open")}
             aria-expanded={dotOpen} style={{ padding: "8px 12px", color: "var(--text-muted)", border: "none", background: "transparent", cursor: "pointer" }}>Dot</button>}
           {!isMobile && renderMainFileToggle(false)}
