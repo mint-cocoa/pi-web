@@ -1,12 +1,5 @@
-export interface NavigationSession {
-  connectionId: string;
-  backend: "pi" | "codex";
-  id: string;
-  title: string;
-  cwd: string;
-  updatedAt: string;
-  pinned?: boolean;
-  archived?: boolean;
+import type { SessionSummary } from "../session-provider";
+export interface NavigationSession extends SessionSummary {
   running?: boolean;
   unread?: boolean;
   selected?: boolean;

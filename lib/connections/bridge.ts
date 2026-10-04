@@ -46,7 +46,8 @@ def codex_metadata():
                 archived = 'archived' if 'archived' in columns else '0'
                 pinned = 'is_pinned' if 'is_pinned' in columns else '0'
                 order = ' ORDER BY updated_at DESC' if 'updated_at' in columns else ''
-                query = 'SELECT id,title,' + archived + ',' + pinned + ' FROM threads' + order + ' LIMIT 10000'
+                title = "COALESCE(NULLIF(name,''),title)" if 'name' in columns else 'title'
+                query = 'SELECT id,' + title + ',' + archived + ',' + pinned + ' FROM threads' + order + ' LIMIT 10000'
                 return {row[0]: {'title': str(row[1] or '')[:160], 'archived': bool(row[2]), 'pinned': bool(row[3])} for row in db.execute(query)}
         except (OSError, sqlite3.Error): continue
     return {}

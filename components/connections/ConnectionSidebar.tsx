@@ -1,17 +1,19 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useConnectionNavigation } from "@/hooks/useConnectionNavigation";
-import { connectionRequest, type RemoteSelection } from "@/lib/connections/client";
+import { connectionRequest } from "@/lib/connections/client";
+import { SessionProviderRegistry, type SessionSelection } from "@/lib/session-provider";
+import { createLocalPiProvider, createSshSessionProvider } from "@/lib/session-provider-adapters";
 import { buildNavigation, DEFAULT_NAVIGATION, isNavigationArchived, isNavigationPinned, navigationKey,
   NAVIGATION_STORAGE_KEY, readNavigationPreferences, toggleNavigationArchive, toggleNavigationPin, type NavigationPreferences, type NavigationSession } from "@/lib/connections/navigation";
 
-export function ConnectionSidebar({ localSessions, selectedRemote, query = "", onSelectRemote, onManageConnections, renderLocal, renderLocalGroup }: {
+export function ConnectionSidebar({ localSessions, selectedSession, query = "", onSelectSession, onManageConnections, renderInteractive, renderLocalGroup }: {
   localSessions: NavigationSession[];
-  selectedRemote?: RemoteSelection | null;
+  selectedSession?: SessionSelection | null;
   query?: string;
-  onSelectRemote: (selection: RemoteSelection) => void;
+  onSelectSession: (selection: SessionSelection) => void;
   onManageConnections: () => void;
-  renderLocal: (session: NavigationSession, actions: ReactNode) => ReactNode;
+  renderInteractive: (session: NavigationSession, actions: ReactNode, activate: () => void) => ReactNode;
   renderLocalGroup: (children: ReactNode) => ReactNode;
 }) {
   const { connections, error, reload } = useConnectionNavigation();
@@ -36,10 +38,20 @@ export function ConnectionSidebar({ localSessions, selectedRemote, query = "", o
     const next = change(prefsRef.current); prefsRef.current = next; setPrefs(next);
     try { localStorage.setItem(NAVIGATION_STORAGE_KEY, JSON.stringify(next)); } catch {}
   }
-  const groups = useMemo(() => [{ id: "local", alias: "local", label: "로컬", sessions: localSessions },
-    ...connections.map(connection => ({ id: connection.id, alias: connection.alias, label: connection.label,
-      sessions: (connection.inventory || connection.cachedInventory)?.sessions.map(session => ({ ...session, connectionId: connection.id })) || [],
-    }))], [connections, localSessions]);
+  const providers = useMemo(() => [createLocalPiProvider(() => localSessions), ...connections.flatMap(connection => {
+    const sessions = (connection.inventory || connection.cachedInventory)?.sessions.map(session => ({ ...session, connectionId: connection.id })) || [];
+    return (["pi", "codex"] as const).map(backend => createSshSessionProvider({ id: connection.id, alias: connection.alias, label: connection.label }, backend, () => sessions.filter(session => session.backend === backend)));
+  })], [connections, localSessions]);
+  const registry = useMemo(() => new SessionProviderRegistry(providers), [providers]);
+  const groups = useMemo(() => {
+    const byConnection = new Map<string, { id: string; alias: string; label: string; sessions: NavigationSession[] }>();
+    for (const provider of providers) {
+      const connection = provider.connection;
+      const group = byConnection.get(connection.id) || { ...connection, sessions: [] };
+      group.sessions.push(...provider.catalog()); byConnection.set(connection.id, group);
+    }
+    return [...byConnection.values()];
+  }, [providers]);
   const navigation = useMemo(() => buildNavigation(groups, prefs, query), [groups, prefs, query]);
   async function operate(id: string, action: "connect" | "disconnect" | "refresh") {
     setBusy(id); setMenu(undefined); setOperationError("");
@@ -68,14 +80,16 @@ export function ConnectionSidebar({ localSessions, selectedRemote, query = "", o
   }
   function row(session: NavigationSession, pinnedSection = false) {
     const key = navigationKey(session);
-    if (session.connectionId === "local") return <div className="connection-nav-local-row" key={key}>{renderLocal(session, actions(session))}</div>;
-    const connection = connections.find(item => item.id === session.connectionId);
-    const remote = (connection?.inventory || connection?.cachedInventory)?.sessions.find(item => item.id === session.id && item.backend === session.backend);
-    if (!connection || !remote) return null;
-    const selected = selectedRemote?.connection.id === session.connectionId && selectedRemote.session.id === session.id && selectedRemote.session.backend === session.backend;
+    const provider = registry.get(session), connection = provider.connection;
+    const activate = () => onSelectSession(registry.select(session));
+    if (provider.capabilities.send && provider.capabilities.live) {
+      const interactive = renderInteractive(session, actions(session), activate);
+      if (interactive) return <div className="connection-nav-local-row" key={key}>{interactive}</div>;
+    }
+    const selected = selectedSession && navigationKey(selectedSession.ref) === key;
     return <div key={key} className={"connection-nav-row" + (selected ? " is-selected" : "")}>
       <button type="button" className="connection-nav-session" aria-current={selected ? "page" : undefined} title={`${connection.label} · ${session.backend}\n${session.cwd}\n${session.title}`}
-        onClick={() => onSelectRemote({ connection: { id: connection.id, alias: connection.alias, label: connection.label }, session: remote })}>
+        onClick={activate}>
         <span className="connection-nav-title">{session.title}</span>
         <small title={session.cwd}>{pinnedSection ? `${connection.label} · ${session.backend} · ` : ""}{session.cwd}</small>
       </button>{actions(session)}

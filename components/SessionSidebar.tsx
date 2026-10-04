@@ -8,7 +8,8 @@ import { dispatchSessionRowContextMenu } from "@/lib/session-row-context-menu";
 import { skillExpansionToCommand } from "@/lib/slash-display";
 import { getProjectActivity, getRecentProjects } from "@/lib/project-groups";
 import { ConnectionSidebar } from "./connections/ConnectionSidebar";
-import type { RemoteSelection } from "@/lib/connections/client";
+import type { SessionSelection } from "@/lib/session-provider";
+import { sessionRefKey } from "@/lib/session-provider";
 import { workspaceKeyOf } from "@/lib/workspace-memory";
 import { formatRelativeTime } from "@/lib/i18n/format";
 import { useI18n } from "@/hooks/useI18n";
@@ -146,8 +147,8 @@ interface Props {
   onBackgroundTaskDone?: () => void;
   onRunningSessionIdsChange?: (ids: Set<string>) => void;
   onSessionsChange?: (sessions: SessionInfo[]) => void;
-  selectedRemote?: RemoteSelection | null;
-  onSelectRemote: (selection: RemoteSelection) => void;
+  selectedProviderSession?: SessionSelection | null;
+  onSelectProviderSession: (selection: SessionSelection) => void;
   onManageConnections: () => void;
 }
 
@@ -400,7 +401,7 @@ function PiWebTitle() {
   );
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, onOpenTerminal, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onBackgroundTaskDone, onRunningSessionIdsChange, onSessionsChange, selectedRemote, onSelectRemote, onManageConnections }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, onOpenTerminal, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onBackgroundTaskDone, onRunningSessionIdsChange, onSessionsChange, selectedProviderSession, onSelectProviderSession, onManageConnections }: Props) {
   const { t } = useI18n();
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   // Tracked in a ref only: the version is compared against the polled value to
@@ -1125,11 +1126,11 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const navigationLocalSessions = useMemo(() => sessionFamilies.map(family => ({
     connectionId: "local", backend: "pi" as const, id: family.root.id,
     title: family.root.name || (skillExpansionToCommand(family.root.firstMessage) || family.root.firstMessage).slice(0, 50) || family.root.id.slice(0, 12),
-    cwd: family.root.cwd, updatedAt: family.latestModified,
-    selected: !selectedRemote && [family.root, ...family.subagents].some(session => session.id === selectedSessionId),
+    cwd: family.root.cwd, updatedAt: family.latestModified, transient: family.root.transient,
+    selected: !selectedProviderSession && [family.root, ...family.subagents].some(session => session.id === selectedSessionId),
     running: [family.root, ...family.subagents].some(session => runningSessionIds.has(session.id)),
     unread: [family.root, ...family.subagents].some(session => unreadSessionIds.has(session.id)),
-  })), [sessionFamilies, selectedRemote, selectedSessionId, runningSessionIds, unreadSessionIds]);
+  })), [sessionFamilies, selectedProviderSession, selectedSessionId, runningSessionIds, unreadSessionIds]);
 
   return (
     <div
@@ -1835,15 +1836,21 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             {error}
           </div>
         )}
-        <ConnectionSidebar localSessions={navigationLocalSessions} selectedRemote={selectedRemote}
-          query={sessionSearchOpen ? sessionSearchQuery : ""} onSelectRemote={onSelectRemote} onManageConnections={onManageConnections}
+        <ConnectionSidebar localSessions={navigationLocalSessions} selectedSession={selectedProviderSession}
+          query={sessionSearchOpen ? sessionSearchQuery : ""} onSelectSession={selection => {
+            const nativeReference = navigationLocalSessions.find(item => sessionRefKey(item) === sessionRefKey(selection.ref));
+            const native = nativeReference ? allSessions.find(session => session.id === nativeReference.id) : undefined;
+            if (native && selection.provider.capabilities.send && selection.provider.capabilities.live) handleSelectSessionFromList(native);
+            else onSelectProviderSession(selection);
+          }} onManageConnections={onManageConnections}
           renderLocalGroup={children => <SessionSearch open={sessionSearchOpen} query={sessionSearchQuery} selectedSessionId={selectedSessionId} onSelectSession={handleSelectSessionFromList}>{children}</SessionSearch>}
-          renderLocal={(item, actions) => {
+          renderInteractive={(item, actions, activate) => {
+            if (!navigationLocalSessions.some(native => sessionRefKey(native) === sessionRefKey(item))) return null;
             const family = sessionFamilies.find(value => value.root.id === item.id);
             if (!family) return null;
             return <SessionItem session={{ ...family.root, modified: family.latestModified }} compact navigationActions={actions}
               isSelected={item.selected || false} isRunning={item.running} isUnread={item.unread}
-              onClick={() => handleSelectSessionFromList(family.root)} onRenamed={loadSessions}
+              onClick={activate} onRenamed={loadSessions}
               onDeleted={id => { onSessionDeleted?.(id); void loadSessions(); }} />;
           }} />
         </div>
